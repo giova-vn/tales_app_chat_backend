@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify
+from bson.objectid import ObjectId
 import datetime
 
 chats_bp = Blueprint("chats", __name__)
@@ -35,10 +36,10 @@ def send_message():
         return json_response({"Error": "SenderID, ReceiverID and content are required"}, 400)
 
     try:
-        sender_id = int(sender_id)
-        receiver_id = int(receiver_id)
+        sender_id = ObjectId(sender_id)
+        receiver_id = ObjectId(receiver_id)
     except ValueError:
-        return json_response({"Error": "Sender and receiver ID must be valid integers"}, 400)
+        return json_response({"Error": "Sender and receiver ID must be valid ObjectsID"}, 400)
     
     # finding a conversartion between these users
     conversation = chats_collection.find_one({
@@ -55,10 +56,7 @@ def send_message():
     }
 
     if conversation:
-        if "messages" not in conversation:
-            conversation["messages"] = []
-
-            chats_collection.update_one(
+        chats_collection.update_one(
             {"_id": conversation["_id"]},
             {"$push": {"messages": message_data}}
             )
@@ -71,8 +69,7 @@ def send_message():
             "messages": [message_data]
         }
         chats_collection.insert_one(new_conversation)
-        return json_response({"Successful": "Message sent"}, 201)
-
+        return json_response({"Successful": "Conversation created. Message sent"}, 201)
 
 @chats_bp.route("/message/history", methods=["GET"])
 def get_messages():
@@ -81,17 +78,17 @@ def get_messages():
     
     chats_collection = db.chats
 
-    user_id1_param = request.args.get("user_id")
-    user_id2_param = request.args.get("receiver_id")
+    user_id1_param = request.args.get("user_id1")
+    user_id2_param = request.args.get("user_id2")
 
     if (not user_id1_param or not user_id2_param):
-        return json_response({"Error": "User ID for sender and receiver are required"}, 400)
+        return json_response({"Error": "user_id for both users are required"}, 400)
 
     try:
-        user_id1 = int(user_id1_param)
-        user_id2 = int(user_id2_param)
+        user_id1 = ObjectId(user_id1_param)
+        user_id2 = ObjectId(user_id2_param)
     except ValueError:
-        return json_response({"Error": "user_id and receiver_id must be valid integers"}, 400)
+        return json_response({"Error": "user_id1 and user_id2 must be valid ObjectsID"}, 400)
 
     conversation = chats_collection.find_one({
         "$or": [
@@ -110,9 +107,9 @@ def get_messages():
     for message in chat_history_raw:
         formatted_message = {
             "message_content": message.get("message_content"),
-            "sender": message.get("sender"), 
+            "sender": str(message.get("sender")), 
             "message_date": message.get("message_date")
         }
         chat_history_formatted.append(formatted_message)
 
-    return json_response({"Successful": "chat history retrieved", "messages": chat_history_formatted}, 200)
+    return json_response({"successful": "chat history retrieved", "messages": chat_history_formatted}, 200)
