@@ -1,6 +1,8 @@
 from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_pymongo import PyMongo
+from dotenv import load_dotenv
+import os 
 
 # import blueprints 
 from api.chats import chats_bp, set_db_connection as set_chats_db
@@ -11,7 +13,8 @@ app = Flask(__name__)
 CORS(app)
 
 # mongoDB connection
-app.config["MONGO_URI"] = "mongodb+srv://giovannipe204:qfc3XFy3QVfGr05G@chatappdb.dpfvwnv.mongodb.net/chat_app_db" 
+load_dotenv() 
+app.config["MONGO_URI"] = os.getenv("MONGO_URI")
 mongodb_client = PyMongo(app)
 db = mongodb_client.db 
 
