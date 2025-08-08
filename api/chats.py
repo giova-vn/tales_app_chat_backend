@@ -113,3 +113,48 @@ def get_messages():
         chat_history_formatted.append(formatted_message)
 
     return json_response({"successful": "chat history retrieved", "messages": chat_history_formatted}, 200)
+
+@chats_bp.route("/chats", methods=["GET"])
+def get_chats():
+    if db is None:
+        return json_response({"Error": "Error with database initialization"}, 500)
+    
+    chats_collection = db.chats
+    users_collection = db.users
+    user_id_param = request.args.get("user_id")
+
+    if not user_id_param:
+        return json_response({"Error": "user_id is required"}, 400)
+    
+    try:
+        user_id = ObjectId(user_id_param)
+    except ValueError:
+        return json_response({"Error": "invalid user_id"}, 400)
+    
+    user_chats_available = chats_collection.find({
+        "$or": [
+            {"user_id1": user_id},
+            {"user_id2": user_id}
+        ]
+    })
+
+    chats_list = []
+
+    for chat in user_chats_available:
+        if chat["user_id1"] == user_id:
+            other_user_id = chat["user_id2"]
+        elif chat["user_id2"] == user_id:
+            other_user_id = chat["user_id1"] 
+
+        other_user = users_collection.find_one({"_id": other_user_id})
+        last_message = chat["messages"][-1]
+
+        chat_info = {
+            "other_user_id": str(other_user_id),
+            "other_username": other_user["username"],
+            "last_message": last_message["message_content"]
+        }
+
+        chats_list.append(chat_info)
+
+    return json_response(chats_list, 200)
